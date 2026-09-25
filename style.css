@@ -1,0 +1,199 @@
+/* ===== VARIÁVEIS DE COR ===== */
+:root {
+  --azul-principal: #6EC6FF;
+  --azul-escuro: #1E88E5;
+  --amarelo-claro: #FFF9C4;
+  --verde-menta: #B2DFDB;
+  --branco: #FFFFFF;
+  --texto: #333333;
+  --sombra: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== RESET BÁSICO ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #E3F2FD 0%, #F1F8E9 100%);
+  color: var(--texto);
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* ===== CABEÇALHO ===== */
+.cabecalho {
+  text-align: center;
+  background: var(--azul-principal);
+  padding: 24px 16px;
+  border-radius: 24px;
+  box-shadow: var(--sombra);
+  margin-bottom: 24px;
+  border: 3px solid var(--branco);
+}
+
+.cabecalho h1 {
+  font-size: 2rem;
+  color: var(--branco);
+  text-shadow: 2px 2px 0 var(--azul-escuro);
+  letter-spacing: 1px;
+}
+
+.subtitulo {
+  font-size: 1.1rem;
+  color: var(--amarelo-claro);
+  font-weight: bold;
+  margin-top: 4px;
+}
+
+/* ===== CONTEÚDO PRINCIPAL ===== */
+.conteudo {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ===== CARDS DE RESUMO ===== */
+.cards-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+.card {
+  background: var(--branco);
+  border-radius: 20px;
+  padding: 18px 20px;
+  box-shadow: var(--sombra);
+  border: 3px solid var(--branco);
+  flex: 1 1 180px;
+  min-width: 160px;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Detalhe colorido no topo do card, estilo adesivo */
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  background: var(--azul-principal);
+}
+
+.card:nth-child(2)::before { background: var(--amarelo-claro); }
+.card:nth-child(3)::before { background: var(--verde-menta); }
+.card:nth-child(4)::before { background: var(--azul-escuro); }
+.card:nth-child(5)::before { background: var(--azul-principal); }
+
+.card:hover {
+  transform: translateY(-4px) rotate(-1deg);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.card h3 {
+  font-size: 0.9rem;
+  color: var(--azul-escuro);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card .valor {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: var(--texto);
+}
+
+.card .detalhe {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* ===== TABELA ===== */
+.tabela-container {
+  background: var(--branco);
+  border-radius: 20px;
+  box-shadow: var(--sombra);
+  border: 3px solid var(--branco);
+  padding: 16px;
+  overflow-x: auto; /* rolagem horizontal em telas pequenas */
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px; /* garante que a tabela não fique espremida */
+}
+
+th, td {
+  padding: 12px 10px;
+  text-align: center;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+th {
+  background: var(--azul-principal);
+  color: var(--branco);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+}
+
+td {
+  font-size: 0.95rem;
+}
+
+/* Linhas alternadas para facilitar a leitura */
+tbody tr:nth-child(even) {
+  background: #F9FBE7;
+}
+
+tbody tr:hover {
+  background: #E3F2FD;
+}
+
+/* Situações com cores */
+.situacao-bom {
+  color: #2E7D32;
+  font-weight: bold;
+}
+
+.situacao-atencao {
+  color: #C62828;
+  font-weight: bold;
+}
+
+.situacao-indisponivel {
+  color: #757575;
+  font-style: italic;
+}
+
+/* ===== RESPONSIVIDADE ===== */
+@media (max-width: 600px) {
+  .cabecalho h1 {
+    font-size: 1.5rem;
+  }
+
+  .card {
+    flex: 1 1 100%;
+  }
+
+  th, td {
+    padding: 8px 6px;
+    font-size: 0.8rem;
+  }
+}

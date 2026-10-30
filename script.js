@@ -302,6 +302,7 @@ function renderizarTabela(disciplinas) {
 function renderizarTudo(disciplinas) {
   renderizarCards(disciplinas);
   renderizarTabela(disciplinas);
+  atualizarGraficos();
 }
 
 // ===== MENSAGENS =====
@@ -526,3 +527,255 @@ elCampoPin.addEventListener("keydown", (e) => {
 elBotaoAlterar.addEventListener("click", entrarModoEdicao);
 elBotaoCancelar.addEventListener("click", cancelarEdicao);
 elBotaoSalvar.addEventListener("click", salvarAlteracoes);
+
+// ===== GRÁFICOS (somente leitura dos dadosAtuais) =====
+// Instâncias do Chart.js (para poder destruir antes de recriar)
+let graficoMedias = null;
+let graficoEvolucao = null;
+let graficoFaltas = null;
+
+// Referência interna de risco (NÃO exibir na interface)
+// Usada apenas para avaliar a situação geral de faltas.
+const REFERENCIA_FALTAS = 350;
+
+// Paleta coerente com o tema do projeto
+const CORES_GRAFICOS = {
+  azulPrincipal: "#6EC6FF",
+  azulEscuro: "#1E88E5",
+  amareloClaro: "#FFF9C4",
+  verdeMenta: "#B2DFDB",
+  texto: "#333333",
+  grade: "rgba(0, 0, 0, 0.08)",
+  perigo: "#C62828"
+};
+
+// Formata número para exibição em tooltip (1 casa decimal com vírgula)
+function formatarNumeroBR(valor) {
+  if (valor === null || valor === undefined) return "—";
+  return Number(valor).toFixed(1).replace(".", ",");
+}
+
+// GRÁFICO 1 — Média por disciplina (barras horizontais)
+function atualizarGraficoMedias() {
+  const canvas = document.getElementById("graficoMediasDisciplinas");
+  if (!canvas) return;
+
+  if (graficoMedias) {
+    graficoMedias.destroy();
+    graficoMedias = null;
+  }
+
+  const disciplinas = dadosAtuais || [];
+
+  const labels = disciplinas.map((d) => d.disciplina);
+  // Se não houver nota, mantém null (não vira zero)
+  const valores = disciplinas.map((d) => (d.media !== null ? d.media : null));
+
+  graficoMedias = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Média",
+        data: valores,
+        backgroundColor: CORES_GRAFICOS.azulPrincipal,
+        borderColor: CORES_GRAFICOS.azulEscuro,
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          min: 0,
+          max: 10,
+          ticks: { color: CORES_GRAFICOS.texto },
+          grid: { color: CORES_GRAFICOS.grade }
+        },
+        y: {
+          ticks: { color: CORES_GRAFICOS.texto, autoSkip: false },
+          grid: { display: false }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.parsed.x;
+              return v === null ? "Sem nota" : "Média: " + formatarNumeroBR(v);
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// GRÁFICO 2 — Evolução da média geral (linha)
+function atualizarGraficoEvolucao() {
+  const canvas = document.getElementById("graficoEvolucaoTrimestres");
+  if (!canvas) return;
+
+  if (graficoEvolucao) {
+    graficoEvolucao.destroy();
+    graficoEvolucao = null;
+  }
+
+  const disciplinas = dadosAtuais || [];
+
+  // Só entram notas válidas (não nulas) em cada trimestre
+  const coletarValidos = (chave) =>
+    disciplinas
+      .map((d) => d[chave])
+      .filter((n) => n !== null && n !== undefined);
+
+  const calcularMediaOuNull = (lista) => {
+    if (lista.length === 0) return null;
+    return lista.reduce((acc, n) => acc + n, 0) / lista.length;
+  };
+
+  const media1 = calcularMediaOuNull(coletarValidos("tri1"));
+  const media2 = calcularMediaOuNull(coletarValidos("tri2"));
+  const media3 = calcularMediaOuNull(coletarValidos("tri3"));
+
+  graficoEvolucao = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels: ["1º Tri", "2º Tri", "3º Tri"],
+      datasets: [{
+        label: "Média geral",
+        data: [media1, media2, media3],
+        borderColor: CORES_GRAFICOS.azulEscuro,
+        backgroundColor: "rgba(110, 198, 255, 0.25)",
+        pointBackgroundColor: CORES_GRAFICOS.azulEscuro,
+        pointRadius: 5,
+        tension: 0.3,
+        spanGaps: true,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          min: 0,
+          max: 10,
+          ticks: { color: CORES_GRAFICOS.texto },
+          grid: { color: CORES_GRAFICOS.grade }
+        },
+        x: {
+          ticks: { color: CORES_GRAFICOS.texto },
+          grid: { display: false }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.parsed.y;
+              return v === null ? "Sem nota" : "Média: " + formatarNumeroBR(v);
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// GRÁFICO 3 — Faltas por trimestre (barras)
+function atualizarGraficoFaltas() {
+  const canvas = document.getElementById("graficoFaltasTrimestres");
+  if (!canvas) return;
+
+  if (graficoFaltas) {
+    graficoFaltas.destroy();
+    graficoFaltas = null;
+  }
+
+  const disciplinas = dadosAtuais || [];
+
+  // Soma as faltas de cada trimestre (posições 0, 1, 2 do array)
+  let f1 = 0, f2 = 0, f3 = 0;
+  disciplinas.forEach((d) => {
+    if (Array.isArray(d.faltas)) {
+      f1 += Number(d.faltas[0]) || 0;
+      f2 += Number(d.faltas[1]) || 0;
+      f3 += Number(d.faltas[2]) || 0;
+    }
+  });
+
+  const total = f1 + f2 + f3;
+
+  // Avaliação interna de risco (referência NÃO aparece na interface)
+  const emPerigo = total >= REFERENCIA_FALTAS;
+
+  // Atualiza o badge "Perigo" e o destaque do card
+  const badge = document.getElementById("estadoFaltas");
+  const cardFaltas = document.getElementById("card-grafico-faltas");
+  if (badge) badge.hidden = !emPerigo;
+  if (cardFaltas) cardFaltas.classList.toggle("critico", emPerigo);
+
+  graficoFaltas = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: ["1º Tri", "2º Tri", "3º Tri"],
+      datasets: [{
+        label: "Faltas",
+        data: [f1, f2, f3],
+        backgroundColor: [
+          CORES_GRAFICOS.azulPrincipal,
+          CORES_GRAFICOS.verdeMenta,
+          CORES_GRAFICOS.amareloClaro
+        ],
+        borderColor: [
+          CORES_GRAFICOS.azulEscuro,
+          CORES_GRAFICOS.azulEscuro,
+          CORES_GRAFICOS.azulEscuro
+        ],
+        borderWidth: 1,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { color: CORES_GRAFICOS.texto, precision: 0 },
+          grid: { color: CORES_GRAFICOS.grade }
+        },
+        x: {
+          ticks: { color: CORES_GRAFICOS.texto },
+          grid: { display: false }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ctx.parsed.y + " faltas"
+          }
+        }
+      }
+    }
+  });
+}
+
+// Atualiza os três gráficos de uma vez
+function atualizarGraficos() {
+  // Não desenha antes do login (dadosAtuais ainda é null)
+  if (!Array.isArray(dadosAtuais) || dadosAtuais.length === 0) return;
+  // Só faz sentido desenhar quando a área do boletim está visível
+  if (!elAreaBoletim || elAreaBoletim.hidden) return;
+
+  atualizarGraficoMedias();
+  atualizarGraficoEvolucao();
+  atualizarGraficoFaltas();
+}

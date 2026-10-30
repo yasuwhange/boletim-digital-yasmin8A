@@ -1,3 +1,10 @@
+// ===== CONFIGURAÇÃO FIXA DO ALUNO =====
+const CONFIG_ALUNO = {
+  turma: "8A",
+  numeroChamada: 30,
+  apiUrl: "https://boletim-api.profbt.com.br"
+};
+
 // ===== DADOS BRUTOS (exatamente como fornecidos) =====
 // Array de objetos: cada objeto é uma disciplina com suas notas e faltas
 const dadosBrutos = [
@@ -18,40 +25,83 @@ const dadosBrutos = [
   { disciplina: "Práticas Experimentais", tri1: 58, tri2: "6,2", tri3: 6.4, faltas: [1, 1, 1] }
 ];
 
+// ===== ESTADO DA SESSÃO =====
+// O PIN fica somente em memória, durante a sessão.
+let pinDaSessao = null;
+let dadosAtuais = null; // dados exibidos no momento (locais ou vindos da API)
+let modoEdicao = false;
+
+// ===== REFERÊNCIAS DO DOM =====
+const elAcessoPin = document.getElementById("acesso-pin");
+const elAreaBoletim = document.getElementById("area-boletim");
+const elCampoPin = document.getElementById("campo-pin");
+const elBotaoEntrar = document.getElementById("botao-entrar");
+const elMensagemAcesso = document.getElementById("mensagem-acesso");
+const elBotaoAlterar = document.getElementById("botao-alterar");
+const elBotaoSalvar = document.getElementById("botao-salvar");
+const elBotaoCancelar = document.getElementById("botao-cancelar");
+const elMensagemEdicao = document.getElementById("mensagem-edicao");
+const corpoTabela = document.getElementById("corpo-tabela");
+const containerCards = document.getElementById("cards-resumo");
+
 // ===== FUNÇÃO PARA NORMALIZAR NOTA =====
 // Converte qualquer formato para a escala 0–10.
 // Retorna null quando a nota não existe ou é inválida.
 function normalizarNota(valor) {
-  // Se for vazio, null ou undefined, a nota ainda não foi lançada
   if (valor === null || valor === undefined || valor === "") {
     return null;
   }
 
-  // Transforma em texto e troca vírgula por ponto
   const texto = String(valor).replace(",", ".");
   const numero = parseFloat(texto);
 
-  // Se não for um número válido, retorna null
   if (isNaN(numero)) {
     return null;
   }
 
-  // Valores entre 0 e 10 permanecem iguais
   if (numero >= 0 && numero <= 10) {
     return numero;
   }
 
-  // Valores maiores que 10 e menores ou iguais a 100 são divididos por 10
   if (numero > 10 && numero <= 100) {
     return numero / 10;
   }
 
-  // Qualquer outro valor é inválido
   return null;
 }
 
-// ===== FUNÇÃO PARA CALCULAR A MÉDIA =====
-// Usa somente as notas disponíveis (não nulas). Se não houver nenhuma, retorna null.
+// ===== VALIDAÇÃO DE NOTA DIGITADA (modo edição) =====
+// Aceita somente 0–10 (ponto ou vírgula) ou vazio (vira null).
+// Retorna { ok: true, valor } ou { ok: false, erro }.
+function validarNotaDigitada(texto) {
+  const limpo = String(texto).trim();
+  if (limpo === "") {
+    return { ok: true, valor: null };
+  }
+  const numero = Number(limpo.replace(",", "."));
+  if (isNaN(numero)) {
+    return { ok: false, erro: "Nota inválida" };
+  }
+  if (numero < 0 || numero > 10) {
+    return { ok: false, erro: "Nota deve estar entre 0 e 10" };
+  }
+  return { ok: true, valor: numero };
+}
+
+// ===== VALIDAÇÃO DE FALTA DIGITADA =====
+// Aceita somente inteiro >= 0.
+function validarFaltaDigitada(texto) {
+  const limpo = String(texto).trim();
+  if (limpo === "") {
+    return { ok: false, erro: "Falta não pode ficar vazia" };
+  }
+  if (!/^\d+$/.test(limpo)) {
+    return { ok: false, erro: "Falta deve ser inteiro >= 0" };
+  }
+  return { ok: true, valor: parseInt(limpo, 10) };
+}
+
+// ===== FUNÇÕES DE CÁLCULO =====
 function calcularMedia(notas) {
   const validas = notas.filter((n) => n !== null);
   if (validas.length === 0) return null;
@@ -59,104 +109,62 @@ function calcularMedia(notas) {
   return soma / validas.length;
 }
 
-// ===== FUNÇÃO PARA DEFINIR A SITUAÇÃO =====
 function definirSituacao(media) {
   if (media === null) return "Nota ainda não disponível";
   if (media >= 6.0) return "Bom desempenho";
   return "Atenção";
 }
 
-// ===== FUNÇÃO PARA FORMATAR NOTA =====
-// Exibe com uma casa decimal e vírgula. Se for null, mostra "Ainda não lançada".
 function formatarNota(nota) {
   if (nota === null) return "Ainda não lançada";
   return nota.toFixed(1).replace(".", ",");
 }
 
 // ===== PROCESSAR DADOS =====
-// Para cada disciplina, normalizamos as notas, calculamos média, faltas e situação.
-const disciplinasProcessadas = dadosBrutos.map((item) => {
+// Se já estiverem normalizados (vindos da API em formato 0-10), mantém.
+// Caso contrário, usa normalizarNota (regra para dados antigos locais).
+function processarDisciplina(item) {
   const tri1 = normalizarNota(item.tri1);
   const tri2 = normalizarNota(item.tri2);
   const tri3 = normalizarNota(item.tri3);
 
+  const faltas = Array.isArray(item.faltas)
+    ? item.faltas
+    : [0, 0, 0];
+
+  const f1 = Number(faltas[0]) || 0;
+  const f2 = Number(faltas[1]) || 0;
+  const f3 = Number(faltas[2]) || 0;
+
   const media = calcularMedia([tri1, tri2, tri3]);
-  const totalFaltas = item.faltas.reduce((acc, f) => acc + f, 0);
+  const totalFaltas = f1 + f2 + f3;
   const situacao = definirSituacao(media);
 
   return {
-    disciplina: item.disciplina,
+    disciplina: String(item.disciplina || ""),
     tri1,
     tri2,
     tri3,
+    faltas: [f1, f2, f3],
+    totalFaltas,
     media,
-    faltas: totalFaltas,
     situacao
   };
-});
+}
 
-// ===== PREENCHER A TABELA =====
-const corpoTabela = document.getElementById("corpo-tabela");
+function processarTodos(itens) {
+  return itens.map(processarDisciplina);
+}
 
-disciplinasProcessadas.forEach((d) => {
-  const linha = document.createElement("tr");
+// ===== CARREGAR DADOS LOCAIS =====
+function carregarDadosLocais() {
+  return processarTodos(dadosBrutos);
+}
 
-  // Disciplina
-  const tdDisciplina = document.createElement("td");
-  tdDisciplina.textContent = d.disciplina;
-  linha.appendChild(tdDisciplina);
-
-  // Notas dos trimestres
-  [d.tri1, d.tri2, d.tri3].forEach((nota) => {
-    const td = document.createElement("td");
-    td.textContent = formatarNota(nota);
-    linha.appendChild(td);
-  });
-
-  // Média
-  const tdMedia = document.createElement("td");
-  tdMedia.textContent = d.media !== null ? d.media.toFixed(1).replace(".", ",") : "—";
-  linha.appendChild(tdMedia);
-
-  // Faltas
-  const tdFaltas = document.createElement("td");
-  tdFaltas.textContent = d.faltas;
-  linha.appendChild(tdFaltas);
-
-  // Situação com classe de cor
-  const tdSituacao = document.createElement("td");
-  tdSituacao.textContent = d.situacao;
-  if (d.situacao === "Bom desempenho") tdSituacao.classList.add("situacao-bom");
-  else if (d.situacao === "Atenção") tdSituacao.classList.add("situacao-atencao");
-  else tdSituacao.classList.add("situacao-indisponivel");
-  linha.appendChild(tdSituacao);
-
-  corpoTabela.appendChild(linha);
-});
-
-// ===== CALCULAR CARDS DE RESUMO =====
-// Média geral: média das médias disponíveis (ignora as que são null)
-const mediasDisponiveis = disciplinasProcessadas
-  .map((d) => d.media)
-  .filter((m) => m !== null);
-
-const mediaGeral = mediasDisponiveis.length > 0
-  ? mediasDisponiveis.reduce((acc, m) => acc + m, 0) / mediasDisponiveis.length
-  : null;
-
-// Total de faltas de todas as disciplinas
-const totalFaltasGeral = disciplinasProcessadas.reduce((acc, d) => acc + d.faltas, 0);
-
-// Contagem de disciplinas por situação
-const bonsDesempenhos = disciplinasProcessadas.filter((d) => d.situacao === "Bom desempenho").length;
-const atencao = disciplinasProcessadas.filter((d) => d.situacao === "Atenção").length;
-
-// Frequência demonstrativa (apenas fictícia nesta etapa)
-// Este percentual é apenas demonstrativo e será tratado de outra forma no futuro.
-const frequenciaDemonstrativa = 92;
-
-// ===== PREENCHER OS CARDS =====
-const containerCards = document.getElementById("cards-resumo");
+// ===== RENDERIZAÇÃO DOS CARDS =====
+function limparCards() {
+  containerCards.innerHTML = "";
+}
 
 function criarCard(titulo, valor, detalhe) {
   const card = document.createElement("div");
@@ -181,25 +189,340 @@ function criarCard(titulo, valor, detalhe) {
   containerCards.appendChild(card);
 }
 
-// Card 1: Média geral
-criarCard(
-  "Média Geral",
-  mediaGeral !== null ? mediaGeral.toFixed(1).replace(".", ",") : "—",
-  "Média das disciplinas com nota"
-);
+function renderizarCards(disciplinas) {
+  limparCards();
 
-// Card 2: Total de faltas
-criarCard("Total de Faltas", totalFaltasGeral, "Soma de todas as disciplinas");
+  const mediasDisponiveis = disciplinas
+    .map((d) => d.media)
+    .filter((m) => m !== null);
 
-// Card 3: Disciplinas com bom desempenho
-criarCard("Bom Desempenho", bonsDesempenhos, "Disciplinas com média ≥ 6,0");
+  const mediaGeral = mediasDisponiveis.length > 0
+    ? mediasDisponiveis.reduce((acc, m) => acc + m, 0) / mediasDisponiveis.length
+    : null;
 
-// Card 4: Disciplinas que precisam de atenção
-criarCard("Atenção", atencao, "Disciplinas com média < 6,0");
+  const totalFaltasGeral = disciplinas.reduce((acc, d) => acc + d.totalFaltas, 0);
 
-// Card 5: Frequência demonstrativa
-criarCard(
-  "Frequência",
-  frequenciaDemonstrativa + "%",
-  "Frequência adequada"
-);
+  const bonsDesempenhos = disciplinas.filter((d) => d.situacao === "Bom desempenho").length;
+  const atencao = disciplinas.filter((d) => d.situacao === "Atenção").length;
+
+  // Frequência demonstrativa (apenas fictícia nesta etapa)
+  // Este percentual é apenas demonstrativo e será tratado de outra forma no futuro.
+  const frequenciaDemonstrativa = 92;
+
+  criarCard(
+    "Média Geral",
+    mediaGeral !== null ? mediaGeral.toFixed(1).replace(".", ",") : "—",
+    "Média das disciplinas com nota"
+  );
+  criarCard("Total de Faltas", totalFaltasGeral, "Soma de todas as disciplinas");
+  criarCard("Bom Desempenho", bonsDesempenhos, "Disciplinas com média ≥ 6,0");
+  criarCard("Atenção", atencao, "Disciplinas com média < 6,0");
+  criarCard("Frequência", frequenciaDemonstrativa + "%", "Frequência adequada");
+}
+
+// ===== RENDERIZAÇÃO DA TABELA =====
+function limparTabela() {
+  corpoTabela.innerHTML = "";
+}
+
+function criarCelulaTexto(texto, classe) {
+  const td = document.createElement("td");
+  td.textContent = texto;
+  if (classe) td.classList.add(classe);
+  return td;
+}
+
+function renderizarTabela(disciplinas) {
+  limparTabela();
+
+  disciplinas.forEach((d, indice) => {
+    const linha = document.createElement("tr");
+
+    // Disciplina
+    linha.appendChild(criarCelulaTexto(d.disciplina));
+
+    // Notas dos trimestres (com edição, se estiver no modo edição)
+    [d.tri1, d.tri2, d.tri3].forEach((nota, i) => {
+      const td = document.createElement("td");
+      if (modoEdicao) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "campo-nota";
+        input.dataset.indice = indice;
+        input.dataset.trimestre = i;
+        input.value = nota !== null ? nota.toFixed(1).replace(".", ",") : "";
+        input.placeholder = "—";
+        td.appendChild(input);
+      } else {
+        td.textContent = formatarNota(nota);
+      }
+      linha.appendChild(td);
+    });
+
+    // Média
+    linha.appendChild(criarCelulaTexto(
+      d.media !== null ? d.media.toFixed(1).replace(".", ",") : "—"
+    ));
+
+    // Faltas (edições por trimestre no modo edição; fora dele, total)
+    if (modoEdicao) {
+      const td = document.createElement("td");
+      const wrapper = document.createElement("div");
+      wrapper.style.display = "flex";
+      wrapper.style.gap = "4px";
+      wrapper.style.justifyContent = "center";
+      d.faltas.forEach((f, i) => {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "campo-falta";
+        input.style.width = "44px";
+        input.dataset.indice = indice;
+        input.dataset.trimestre = i;
+        input.value = String(f);
+        wrapper.appendChild(input);
+      });
+      td.appendChild(wrapper);
+      linha.appendChild(td);
+    } else {
+      linha.appendChild(criarCelulaTexto(String(d.totalFaltas)));
+    }
+
+    // Situação
+    const tdSituacao = document.createElement("td");
+    tdSituacao.textContent = d.situacao;
+    if (d.situacao === "Bom desempenho") tdSituacao.classList.add("situacao-bom");
+    else if (d.situacao === "Atenção") tdSituacao.classList.add("situacao-atencao");
+    else tdSituacao.classList.add("situacao-indisponivel");
+    linha.appendChild(tdSituacao);
+
+    corpoTabela.appendChild(linha);
+  });
+}
+
+function renderizarTudo(disciplinas) {
+  renderizarCards(disciplinas);
+  renderizarTabela(disciplinas);
+}
+
+// ===== MENSAGENS =====
+function mostrarMensagemAcesso(texto, tipo) {
+  elMensagemAcesso.textContent = texto;
+  elMensagemAcesso.className = "mensagem" + (tipo ? " " + tipo : "");
+}
+
+function mostrarMensagemEdicao(texto, tipo) {
+  elMensagemEdicao.textContent = texto;
+  elMensagemEdicao.className = "mensagem" + (tipo ? " " + tipo : "");
+}
+
+// ===== LOGIN =====
+async function entrar() {
+  const pin = elCampoPin.value.trim();
+
+  if (!pin) {
+    mostrarMensagemAcesso("Digite o PIN.", "erro");
+    return;
+  }
+
+  elBotaoEntrar.disabled = true;
+  mostrarMensagemAcesso("Conectando...", "info");
+
+  try {
+    const resposta = await fetch(CONFIG_ALUNO.apiUrl + "/api/v1/boletins/abrir", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        turma: CONFIG_ALUNO.turma,
+        numero_chamada: CONFIG_ALUNO.numeroChamada,
+        pin: pin
+      })
+    });
+
+    if (resposta.status === 401) {
+      mostrarMensagemAcesso("Turma, chamada ou PIN inválidos.", "erro");
+      elBotaoEntrar.disabled = false;
+      return;
+    }
+
+    if (resposta.status === 429) {
+      mostrarMensagemAcesso("Muitas tentativas. Aguarde um minuto e tente novamente.", "erro");
+      elBotaoEntrar.disabled = false;
+      return;
+    }
+
+    if (!resposta.ok) {
+      mostrarMensagemAcesso("Não foi possível conectar ao servidor. Tente novamente.", "erro");
+      elBotaoEntrar.disabled = false;
+      return;
+    }
+
+    const resultado = await resposta.json();
+    pinDaSessao = pin;
+
+    // Limpa o campo do PIN após o login bem-sucedido
+    elCampoPin.value = "";
+
+    if (resultado.dados && Array.isArray(resultado.dados.disciplinas) && resultado.dados.disciplinas.length > 0) {
+      // Dados da API têm prioridade sobre os dados locais
+      dadosAtuais = processarTodos(resultado.dados.disciplinas);
+    } else {
+      // Sem dados salvos: usa os dados locais existentes
+      dadosAtuais = carregarDadosLocais();
+    }
+
+    // Troca de tela
+    elAcessoPin.hidden = true;
+    elAreaBoletim.hidden = false;
+
+    renderizarTudo(dadosAtuais);
+    elBotaoEntrar.disabled = false;
+  } catch (erro) {
+    mostrarMensagemAcesso("Não foi possível conectar ao servidor. Tente novamente.", "erro");
+    elBotaoEntrar.disabled = false;
+  }
+}
+
+// ===== MODO EDIÇÃO =====
+function entrarModoEdicao() {
+  modoEdicao = true;
+  elBotaoAlterar.hidden = true;
+  elBotaoSalvar.hidden = false;
+  elBotaoCancelar.hidden = false;
+  mostrarMensagemEdicao("");
+  renderizarTabela(dadosAtuais);
+}
+
+function cancelarEdicao() {
+  modoEdicao = false;
+  elBotaoAlterar.hidden = false;
+  elBotaoSalvar.hidden = true;
+  elBotaoCancelar.hidden = true;
+  mostrarMensagemEdicao("");
+  // Descarta alterações não salvas: re-renderiza a partir dos dados atuais
+  renderizarTabela(dadosAtuais);
+}
+
+// ===== SALVAR ALTERAÇÕES =====
+async function salvarAlteracoes() {
+  // Lê os inputs e valida
+  const inputsNota = document.querySelectorAll(".campo-nota");
+  const inputsFalta = document.querySelectorAll(".campo-falta");
+
+  // Cópia de trabalho para aplicar valores e validar
+  const novos = dadosAtuais.map((d) => ({
+    disciplina: d.disciplina,
+    tri1: d.tri1,
+    tri2: d.tri2,
+    tri3: d.tri3,
+    faltas: d.faltas.slice()
+  }));
+
+  let temErro = false;
+
+  // Remove marcações antigas
+  document.querySelectorAll(".campo-invalido").forEach((el) => el.classList.remove("campo-invalido"));
+
+  inputsNota.forEach((input) => {
+    const indice = Number(input.dataset.indice);
+    const trimestre = Number(input.dataset.trimestre);
+    const resultado = validarNotaDigitada(input.value);
+
+    if (!resultado.ok) {
+      temErro = true;
+      input.classList.add("campo-invalido");
+      return;
+    }
+
+    const chave = "tri" + (trimestre + 1);
+    novos[indice][chave] = resultado.valor;
+  });
+
+  inputsFalta.forEach((input) => {
+    const indice = Number(input.dataset.indice);
+    const trimestre = Number(input.dataset.trimestre);
+    const resultado = validarFaltaDigitada(input.value);
+
+    if (!resultado.ok) {
+      temErro = true;
+      input.classList.add("campo-invalido");
+      return;
+    }
+
+    novos[indice].faltas[trimestre] = resultado.valor;
+  });
+
+  if (temErro) {
+    mostrarMensagemEdicao("Existem campos inválidos. Corrija os campos destacados.", "erro");
+    return;
+  }
+
+  // Recalcula médias/faltas/situação a partir dos valores editados
+  const processados = novos.map((d) => {
+    const media = calcularMedia([d.tri1, d.tri2, d.tri3]);
+    const totalFaltas = d.faltas.reduce((acc, f) => acc + f, 0);
+    return {
+      disciplina: d.disciplina,
+      tri1: d.tri1,
+      tri2: d.tri2,
+      tri3: d.tri3,
+      faltas: d.faltas,
+      totalFaltas,
+      media,
+      situacao: definirSituacao(media)
+    };
+  });
+
+  elBotaoSalvar.disabled = true;
+  mostrarMensagemEdicao("Salvando...", "info");
+
+  try {
+    const resposta = await fetch(CONFIG_ALUNO.apiUrl + "/api/v1/boletins/salvar", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        turma: CONFIG_ALUNO.turma,
+        numero_chamada: CONFIG_ALUNO.numeroChamada,
+        pin: pinDaSessao,
+        dados: {
+          disciplinas: processados.map((d) => ({
+            disciplina: d.disciplina,
+            tri1: d.tri1,
+            tri2: d.tri2,
+            tri3: d.tri3,
+            faltas: d.faltas
+          }))
+        }
+      })
+    });
+
+    if (!resposta.ok) {
+      mostrarMensagemEdicao("Não foi possível salvar. Tente novamente.", "erro");
+      elBotaoSalvar.disabled = false;
+      return;
+    }
+
+    // Atualiza o estado local com os dados salvos
+    dadosAtuais = processados;
+    modoEdicao = false;
+    elBotaoAlterar.hidden = false;
+    elBotaoSalvar.hidden = true;
+    elBotaoSalvar.disabled = false;
+    elBotaoCancelar.hidden = true;
+
+    renderizarTudo(dadosAtuais);
+    mostrarMensagemEdicao("Dados salvos com sucesso.", "sucesso");
+  } catch (erro) {
+    mostrarMensagemEdicao("Não foi possível salvar. Tente novamente.", "erro");
+    elBotaoSalvar.disabled = false;
+  }
+}
+
+// ===== EVENTOS =====
+elBotaoEntrar.addEventListener("click", entrar);
+elCampoPin.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") entrar();
+});
+
+elBotaoAlterar.addEventListener("click", entrarModoEdicao);
+elBotaoCancelar.addEventListener("click", cancelarEdicao);
+elBotaoSalvar.addEventListener("click", salvarAlteracoes);

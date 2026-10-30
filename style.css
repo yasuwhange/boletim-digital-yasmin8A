@@ -128,13 +128,13 @@ body {
   box-shadow: var(--sombra);
   border: 3px solid var(--branco);
   padding: 16px;
-  overflow-x: auto; /* rolagem horizontal em telas pequenas */
+  overflow-x: auto;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 700px; /* garante que a tabela não fique espremida */
+  min-width: 700px;
 }
 
 th, td {
@@ -157,7 +157,6 @@ td {
   font-size: 0.95rem;
 }
 
-/* Linhas alternadas para facilitar a leitura */
 tbody tr:nth-child(even) {
   background: #F9FBE7;
 }
@@ -166,7 +165,6 @@ tbody tr:hover {
   background: #E3F2FD;
 }
 
-/* Situações com cores */
 .situacao-bom {
   color: #2E7D32;
   font-weight: bold;
@@ -195,5 +193,154 @@ tbody tr:hover {
   th, td {
     padding: 8px 6px;
     font-size: 0.8rem;
+  }
+}
+
+/* ===== NOVOS ESTILOS — TELA DE PIN ===== */
+.acesso-pin {
+  background: var(--branco);
+  border-radius: 20px;
+  box-shadow: var(--sombra);
+  border: 3px solid var(--branco);
+  padding: 24px 20px;
+  text-align: center;
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.acesso-pin h2 {
+  color: var(--azul-escuro);
+  font-size: 1.2rem;
+}
+
+.acesso-pin .info-aluno {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.acesso-pin label {
+  font-size: 0.85rem;
+  color: var(--azul-escuro);
+  font-weight: bold;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.acesso-pin input {
+  padding: 10px 12px;
+  border: 2px solid var(--azul-principal);
+  border-radius: 12px;
+  font-size: 1rem;
+  text-align: center;
+  outline: none;
+}
+
+.acesso-pin input:focus {
+  border-color: var(--azul-escuro);
+  box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.2);
+}
+
+/* ===== NOVOS ESTILOS — BOTÕES ===== */
+button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 12px;
+  background: var(--azul-escuro);
+  color: var(--branco);
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+button:hover {
+  background: var(--azul-principal);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+button:disabled {
+  background: #B0BEC5;
+  cursor: not-allowed;
+}
+
+/* ===== NOVOS ESTILOS — MENSAGENS ===== */
+.mensagem {
+  font-size: 0.9rem;
+  min-height: 1.2em;
+  margin-top: 6px;
+}
+
+.mensagem.erro {
+  color: #C62828;
+  font-weight: bold;
+}
+
+.mensagem.sucesso {
+  color: #2E7D32;
+  font-weight: bold;
+}
+
+.mensagem.info {
+  color: var(--azul-escuro);
+  font-weight: bold;
+}
+
+/* ===== NOVOS ESTILOS — ÁREA DO BOLETIM ===== */
+.area-boletim {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.acoes-boletim {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ===== NOVOS ESTILOS — MODO EDIÇÃO ===== */
+td input.campo-nota,
+td input.campo-falta {
+  width: 80px;
+  padding: 6px 8px;
+  border: 2px solid var(--azul-principal);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  text-align: center;
+  outline: none;
+}
+
+td input.campo-nota:focus,
+td input.campo-falta:focus {
+  border-color: var(--azul-escuro);
+}
+
+td input.campo-invalido {
+  border-color: #C62828;
+  background: #FFEBEE;
+}
+
+/* ===== AJUSTES RESPONSIVOS PARA OS NOVOS ELEMENTOS ===== */
+@media (max-width: 600px) {
+  .acesso-pin {
+    padding: 18px 14px;
+  }
+
+  .acoes-boletim {
+    flex-direction: column;
+  }
+
+  .acoes-boletim button {
+    width: 100%;
   }
 }

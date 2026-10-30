@@ -344,3 +344,86 @@ td input.campo-invalido {
     width: 100%;
   }
 }
+
+/* ===== NOVOS ESTILOS — ÁREA DE GRÁFICOS ===== */
+.area-graficos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.grafico-card {
+  background: var(--branco);
+  border-radius: 20px;
+  box-shadow: var(--sombra);
+  border: 3px solid var(--branco);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.grafico-card h2 {
+  font-size: 1rem;
+  color: var(--azul-escuro);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.grafico-container {
+  position: relative;
+  width: 100%;
+  height: 240px;
+}
+
+/* O gráfico de médias por disciplina tem mais linhas, então é mais alto */
+.grafico-container.grafico-alto {
+  height: 420px;
+}
+
+/* Badge de perigo (só aparece quando crítico) */
+.badge-perigo {
+  display: inline-block;
+  background: #C62828;
+  color: #FFFFFF;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Estado crítico no card de faltas */
+.grafico-card.critico {
+  border-color: #C62828;
+  box-shadow: 0 4px 12px rgba(198, 40, 40, 0.35);
+}
+
+/* Responsividade dos gráficos */
+@media (max-width: 960px) {
+  .area-graficos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .area-graficos {
+    grid-template-columns: 1fr;
+  }
+
+  .grafico-container {
+    height: 220px;
+  }
+
+  .grafico-container.grafico-alto {
+    height: 380px;
+  }
+}

@@ -32,6 +32,30 @@
         <!-- Os cards serão inseridos aqui pelo script.js -->
       </section>
 
+      <!-- Área dos gráficos -->
+      <section class="area-graficos" aria-label="Gráficos do boletim">
+        <article class="grafico-card">
+          <h2>Média por disciplina</h2>
+          <div class="grafico-container grafico-alto">
+            <canvas id="graficoMediasDisciplinas" role="img" aria-label="Gráfico de barras com a média de cada disciplina"></canvas>
+          </div>
+        </article>
+
+        <article class="grafico-card">
+          <h2>Evolução da média geral</h2>
+          <div class="grafico-container">
+            <canvas id="graficoEvolucaoTrimestres" role="img" aria-label="Gráfico de linha com a evolução da média geral por trimestre"></canvas>
+          </div>
+        </article>
+
+        <article class="grafico-card" id="card-grafico-faltas">
+          <h2>Faltas por trimestre <span id="estadoFaltas" class="badge-perigo" hidden>Perigo</span></h2>
+          <div class="grafico-container">
+            <canvas id="graficoFaltasTrimestres" role="img" aria-label="Gráfico de barras com as faltas somadas por trimestre"></canvas>
+          </div>
+        </article>
+      </section>
+
       <!-- Botão para entrar no modo de edição -->
       <div class="acoes-boletim">
         <button id="botao-alterar" type="button">Alterar dados</button>
@@ -62,6 +86,8 @@
     </section>
   </main>
 
+  <!-- Chart.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Arquivo JavaScript que vai montar os dados -->
   <script src="script.js" defer></script>
 </body>
